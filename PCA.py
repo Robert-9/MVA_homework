@@ -35,7 +35,6 @@ def pca_store_res(results, n_components, threshold_percent):
     return final_results
 
 
-
 pca_results = []
 nComp = 0.7
 thre_per = 17
@@ -59,8 +58,6 @@ def pca_init(n_com, inputs):
     return pca
 
 
-pca = pca_init(nComp, X_train_normal_scaled)
-
 # X_test_normal_pca = pca.transform(X_test_normal_scaled)
 # X_test_normal_projected = pca.inverse_transform(X_test_normal_pca)
 
@@ -72,15 +69,14 @@ def preprocess_test_data(scaler, pca, X_test_fault):
     X_test_fault_projected = pca.inverse_transform(X_test_fault_pca)
     return X_test_fault_scaled, X_test_fault_projected
 
-
-
-
 # 计算 n_components
 # variance_ratios = pca.explained_variance_ratio_  # 获取方差比
 # cumulative_variance_ratios = np.cumsum(variance_ratios)  # 计算累计方差比
 # components_needed = np.sum(cumulative_variance_ratios <= 0.95) + 1  # 找到累计方差比达到或超过95%的主成分数量
 # print(f"需要的主成分数量: {components_needed}")
 
+
+pca = pca_init(nComp, X_train_normal_scaled)
 # 针对每种故障单独进行故障检测和性能评估
 for i in range(1, 22):
     fault_label = f'd{i:02}'
@@ -126,7 +122,6 @@ for i in range(1, 22):
         'FDR': FDR,
         'DD': DD
     })
-
 
     if not i % 4:
         # 绘图
