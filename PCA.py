@@ -79,14 +79,16 @@ def preprocess_test_data(scaler, pca, X_test_fault):
 pca = pca_init(nComp, X_train_normal_scaled)
 # 针对每种故障单独进行故障检测和性能评估
 for i in range(1, 22):
-    fault_label = f'd{i:02}'
+    fault_type = f'd{i:02}'
     # print(f"\nFault Type: {fault_label}")
 
-    X_train_fault = data[fault_label].reshape(-1, 52)  # 故障训练数据
-    X_test_fault = data[f'{fault_label}_te'].reshape(-1, 52)  # 故障测试数据
+    X_train_fault = data[fault_type].reshape(-1, 52)  # 故障训练数据
+    X_test_fault = data[f'{fault_type}_te'].reshape(-1, 52)  # 故障测试数据
 
     # 整合测试数据并标准化
     X_test_fault_scaled = scaler.transform(X_test_fault)
+
+    # PCA
     X_test_fault_pca = pca.transform(X_test_fault_scaled)
     X_test_fault_projected = pca.inverse_transform(X_test_fault_pca)
 
@@ -116,7 +118,7 @@ for i in range(1, 22):
     # print(f"FAR: {FAR}, FDR: {FDR}, DD: {DD}\n")
 
     pca_results.append({
-        'fault_type': fault_label,
+        'fault_type': fault_type,
         'threshold': threshold,
         'FAR': FAR,
         'FDR': FDR,
@@ -130,13 +132,13 @@ for i in range(1, 22):
         plt.subplot(121)
         plt.plot(reconstruction_error, label='Reconstruction Error')
         plt.axhline(y=threshold, color='r', linestyle='--', label='Threshold')
-        plt.title(f'Reconstruction Error and Threshold for {fault_label}')
+        plt.title(f'Reconstruction Error and Threshold for {fault_type}')
         plt.legend()
 
         plt.subplot(122)
         plt.plot(y_test_fault, label='Actual Faults', linestyle='--')
         plt.plot(faults.astype(int), label='Detected Faults')
-        plt.title(f'Fault Detection for {fault_label}')
+        plt.title(f'Fault Detection for {fault_type}')
         plt.legend()
         plt.tight_layout()
 

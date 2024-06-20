@@ -26,7 +26,7 @@ for i in range(1, 22):
     X_scaled = scaler.fit_transform(X)  # 合起来以后再标准化  此方法用于在训练集上标准化
 
     # 训练PLS模型用于故障数据
-    pls = PLSRegression(n_components=40)
+    pls = PLSRegression(n_components=10)
     pls.fit(X_scaled, y_train)
 
     # 故障测试数据
@@ -54,7 +54,7 @@ for i in range(1, 22):
 
     print(f"{fault_type}: FAR: {FAR}, FDR: {FDR}, DD: {DD}\n")
 
-    if FDR>0.7 and FAR<0.5:
+    if not(FDR>0.7 and FAR<0.5):
         plt.figure(i, figsize=(15, 6))
         plt.plot(y_pred_fault, label='PLS Predicted Scores')
         plt.axhline(y=0.4, color='red', label='Threshold', linestyle='--')

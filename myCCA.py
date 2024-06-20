@@ -4,6 +4,101 @@ from sklearn.cross_decomposition import CCA
 from sklearn.preprocessing import StandardScaler
 import matplotlib.pyplot as plt
 
+from scipy.linalg import svd, diagsvd
+from scipy.stats import chi2
+
+
+def my_cca(Y_tr, U_tr, epsilon=1e-10):
+    """
+    执行CCA分析，包括矩阵正则化和稳健的矩阵运算。
+
+    参数:
+        Y_tr (numpy.ndarray): 输入矩阵Y。
+        U_tr (numpy.ndarray): 输入矩阵U。
+        epsilon (float): 对角加载的小正数，用于保证协方差矩阵的正定性。
+
+    返回:
+        U (numpy.ndarray): Y的左奇异向量矩阵。
+        S (numpy.ndarray): 奇异值矩阵，对角线上的值为典型相关系数。
+        V (numpy.ndarray): U的右奇异向量矩阵。
+        P (numpy.ndarray): Y的变换矩阵，包含主要的典型向量。
+        P_res (numpy.ndarray): Y的残余变换矩阵，包含次要的典型向量。
+        L (numpy.ndarray): U的变换矩阵，包含主要的典型向量。
+        L_res (numpy.ndarray): U的残余变换矩阵，包含次要的典型向量。
+    """
+    Y_cov = Y_tr @ Y_tr.T + epsilon * np.eye(Y_tr.shape[0])
+    U_cov = U_tr @ U_tr.T + epsilon * np.eye(U_tr.shape[0])
+    YU_cov = Y_tr @ U_tr.T
+
+    # 使用特征分解来计算矩阵的稳健平方根逆
+    def matrix_sqrt_inv(mat):
+        eigenvalues, eigenvectors = np.linalg.eigh(mat)
+        # 只保留正特征值
+        positive_indices = eigenvalues > epsilon
+        inv_sqrt_eigenvalues = 1.0 / np.sqrt(eigenvalues[positive_indices])
+        return eigenvectors[:, positive_indices] @ np.diag(inv_sqrt_eigenvalues) @ eigenvectors[:,
+                                                                                   positive_indices].T
+
+    Y_norm = matrix_sqrt_inv(Y_cov)
+    U_norm = matrix_sqrt_inv(U_cov)
+
+    # SVD分解
+    matrix_to_decompose = Y_norm @ YU_cov @ U_norm
+    U, S_diag, Vt = np.linalg.svd(matrix_to_decompose)
+    V = Vt.T
+
+    rank = np.linalg.matrix_rank(S_diag)
+
+    # 提取典型相关系数和变换矩阵
+    P = Y_norm @ U[:, :rank]
+    P_res = Y_norm @ U[:, rank:]
+    L = U_norm @ V[:, :rank]
+    L_res = U_norm @ V[:, rank:]
+
+    return U, np.diag(S_diag[:rank]), V, P, P_res, L, L_res
+
+
+def cca_fd(Y_tr, U_tr, Y_test, U_test):
+    """
+    基于CCA的故障检测函数。
+
+    参数:
+        Y_tr (numpy.ndarray): 训练集输入Y。
+        U_tr (numpy.ndarray): 训练集输入U。
+        Y_test (numpy.ndarray): 测试集输入Y，可能包含故障。
+        U_test (numpy.ndarray): 测试集输入U，可能包含故障。
+
+    返回:
+        T2_stats (numpy.ndarray): 测试数据的T2统计量数组。
+        T2_threshold (float): 基于显著性水平的T2阈值。
+    """
+
+    # 调用CCA函数获取变换矩阵和相关系数
+    U, S, V, P, P_res, L, L_res = my_cca(Y_tr, U_tr)
+
+    # 计算残差
+    rank_S = np.linalg.matrix_rank(S)
+    residuals = [P.T @ Y_test[:, i] - S[:rank_S, :rank_S] @ L.T @ U_test[:, i] for i in range(Y_test.shape[1])]
+    residuals = np.array(residuals).T
+
+    # 计算残差协方差和T2统计量
+    # cov_residuals = np.cov(residuals)
+
+    if residuals.ndim == 1:
+        residuals = residuals.reshape(1, -1)  # 确保残差是二维的
+
+    # 确保返回一个二维数组，即使只有一个变量
+    cov_residuals = np.cov(residuals, rowvar=False)
+    if cov_residuals.size == 1:
+        cov_residuals = cov_residuals.reshape(1, 1)  # 确保协方差矩阵至少是1x1
+
+    T2_stats = np.array([x.T @ np.linalg.inv(cov_residuals) @ x for x in residuals.T])
+
+    alpha = 0.05
+    T2_threshold = chi2.ppf(1 - alpha, rank_S)
+
+    return T2_stats, T2_threshold
+
 
 # 加载数据
 data = loadmat('TE_data.mat')
