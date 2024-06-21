@@ -8,35 +8,14 @@ import matplotlib.pyplot as plt
 from scipy.io import loadmat
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
+from visualize import *
 
-import json
 
 
-def pca_store_res(results, n_components, threshold_percent):
-    """
-        构建最终的结果字典
-    """
-    final_results = {
-        'n_components': n_components,
-        'threshold_percent': threshold_percent,
-        'faults': {}
-    }
-    for res in results:
-        final_results['faults'][res['fault_type']] = {
-            'threshold': res['threshold'],
-            'FAR': res['FAR'],
-            'FDR': res['FDR'],
-            'DD': res['DD']
-        }
-    # 存储结果到JSON文件
-    with open(f'pcaResults_nCom{n_components}_threPer{threshold_percent}.json', 'w') as f:
-        json.dump(final_results, f, indent=4)
-
-    return final_results
 
 
 pca_results = []
-nComp = 0.7
+nComp = 0.2
 thre_per = 17
 
 # 加载数据
@@ -44,7 +23,13 @@ data = loadmat('D:\大学的东西\硕\课程\过程监测与故障诊断\Final 
 
 X_train_normal = data['d00'].reshape(-1, 52)  # 正常训练数据，每个样本包含52个变量
 X_test_normal = data['d00_te'].reshape(-1, 52)  # 正常测试数据，每个样本包含52个变量
-
+# plt.plot(X_train_normal)
+# plt.yscale("log")
+# # 设置 x 轴和 y 轴的刻度标签，并放大字体
+# plt.xticks(fontsize=16)
+# plt.yticks(fontsize=16)
+# plt.show()
+# plt.close()
 # 数据预处理
 scaler = StandardScaler()
 X_train_normal_scaled = scaler.fit_transform(X_train_normal)
@@ -113,7 +98,8 @@ for i in range(1, 22):
 
     FAR = FP / (FP + TN) if (FP + TN) > 0 else 0
     FDR = TP / (TP + FN) if (TP + FN) > 0 else 0
-    DD = np.mean(reconstruction_error[y_test_fault == 1]) - np.mean(reconstruction_error[y_test_fault == 0])
+    # DD = np.mean(reconstruction_error[y_test_fault == 1]) - np.mean(reconstruction_error[y_test_fault == 0])
+    DD = calculate_detection_delay(faults)
 
     # print(f"FAR: {FAR}, FDR: {FDR}, DD: {DD}\n")
 
@@ -125,24 +111,20 @@ for i in range(1, 22):
         'DD': DD
     })
 
-    if not i % 4:
+    if (not i % 4) and i < 20:
         # 绘图
-        plt.figure(i, figsize=(15, 6))
+        # plt.figure(i, figsize=(15, 6))
         # plt.figure(figsize=(12, 6))
-        plt.subplot(121)
+        fig_num = int(220 + i/4)
+        plt.subplot(fig_num)
         plt.plot(reconstruction_error, label='Reconstruction Error')
         plt.axhline(y=threshold, color='r', linestyle='--', label='Threshold')
-        plt.title(f'Reconstruction Error and Threshold for {fault_type}')
+        plt.title(f'PCA Reconstruction Error and Threshold for {fault_type}', fontsize=12)
+        plt.xticks(fontsize=12)
+        plt.yticks(fontsize=12)
         plt.legend()
 
-        plt.subplot(122)
-        plt.plot(y_test_fault, label='Actual Faults', linestyle='--')
-        plt.plot(faults.astype(int), label='Detected Faults')
-        plt.title(f'Fault Detection for {fault_type}')
-        plt.legend()
-        plt.tight_layout()
 
-
-pca_store_res(pca_results, nComp, thre_per)
+pca_pls_store_res('pca', pca_results, nComp, thre_per)
 print("\n\nresults:\n", pca_results)
 plt.show()

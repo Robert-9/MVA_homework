@@ -1,6 +1,71 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import json
 
+
+def pca_pls_store_res(type, results, n_components, threshold_percent):
+    """
+        构建最终的结果字典
+    """
+    final_results = {
+        'n_components': n_components,
+        'threshold_percent': threshold_percent,
+        'faults': {}
+    }
+    for res in results:
+        final_results['faults'][res['fault_type']] = {
+            'threshold': res['threshold'],
+            'FAR': res['FAR'],
+            'FDR': res['FDR'],
+            'DD': res['DD']
+        }
+    # 存储结果到JSON文件
+    with open(f'{type}Results_nCom{n_components}_threPer{threshold_percent}.json', 'w') as f:
+        json.dump(final_results, f, indent=4)
+    print(final_results)
+
+    return final_results
+
+
+def cca_svm_store_res(type, results, threshold_value):
+    """
+        构建最终的结果字典
+    """
+    final_results = {
+        'threshold': threshold_value,
+        'faults': {}
+    }
+    for res in results:
+        final_results['faults'][res['fault_type']] = {
+            'FAR': res['FAR'],
+            'FDR': res['FDR'],
+            'DD': res['DD']
+        }
+    # 存储结果到JSON文件
+    with open(f'{type}Results_threVal{threshold_value}.json', 'w') as f:
+        json.dump(final_results, f, indent=4)
+    print(final_results)
+
+    return final_results
+
+
+def calculate_detection_delay(faults, window_size=10):
+    # 寻找第一次出现连续10个故障的位置
+    consecutive_faults = 0
+    start_index = 160  # 从第160个样本开始检测故障
+    for i in range(start_index, len(faults)):
+        if faults[i]:
+            consecutive_faults += 1
+        else:
+            consecutive_faults = 0
+
+        if consecutive_faults >= window_size:
+            # 找到了连续10个故障，计算中间时刻
+            # mid_point = i - window_size // 2
+            return i - start_index  # 返回检测延迟
+
+
+"""
 # 假设有一系列故障检测的结果，每个结果包括FAR, FDR, DD和故障类型标签
 results = [
     {'fault_type': 'Type 1', 'FAR': 0.05, 'FDR': 0.95, 'DD': 0.1, 'n_components': 5, 'threshold': 0.95},
@@ -65,3 +130,4 @@ plot_performance_metrics(results)
 # ax.set_xlabel('n_components')
 # ax.set_ylabel('FDR')
 # plt.show()
+"""

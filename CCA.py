@@ -3,7 +3,10 @@ from scipy.io import loadmat
 from sklearn.cross_decomposition import CCA
 from sklearn.preprocessing import StandardScaler
 import matplotlib.pyplot as plt
+from visualize import *
 
+
+cca_results = []
 
 # 加载数据
 data = loadmat('TE_data.mat')
@@ -36,8 +39,8 @@ for i in range(1, 22):
 
 
     # 训练CCA模型用于故障数据
-    # cca = CCA(n_components=1)
-    # cca.fit(X_scaled, y_train)
+    cca = CCA(n_components=1)
+    cca.fit(X_scaled, y_train)
 
     # 故障测试数据
     X_test_fault = data[f'{fault_type}_te'].reshape(-1, 52)
@@ -54,18 +57,18 @@ for i in range(1, 22):
     # 标准化测试数据
     X_test_fault_scaled = scaler.transform(X_test_fault)  # 此方法用于在测试集上标准化
 
-    # # 使用PLS模型进行故障检测
-    # X_c, y_pred_fault = cca.transform(X_test_fault_scaled, y_test_fault)
-    # # 使用CCA得分判断故障
-    # # threshold = np.percentile(X_c, 20)  # 设定阈值
+    # 使用CCA模型进行故障检测
+    X_c, y_pred_fault = cca.transform(X_test_fault_scaled, y_test_fault)
+    # 使用CCA得分判断故障
+    threshold = np.percentile(X_c, 20)  # 设定阈值
     # threshold = 0
-    # print("thre = ", threshold)
-    # # y_pred_fault_label = y_pred_fault[:, 0] > 0.1
-    # y_pred_fault_label = X_c < threshold
+    print("thre = ", threshold)
+    # y_pred_fault_label = y_pred_fault[:, 0] > 0.1
+    y_pred_fault_label = X_c > threshold
 
-    t2, threshold = cca_fd(X_scaled, y_train, X_test_fault_scaled, y_test_fault)
-    y_pred_fault_label = (t2 > threshold).astype(int)
-    y_pred_fault = t2
+    # t2, threshold = cca(X_scaled, y_train, X_test_fault_scaled, y_test_fault)
+    # y_pred_fault_label = (t2 > threshold).astype(int)
+    # y_pred_fault = t2
 
     # 计算性能指标
     TP = np.sum((y_pred_fault_label == 1) & (y_test_fault == 1))
@@ -75,23 +78,30 @@ for i in range(1, 22):
 
     FAR = FP / (FP + TN) if (FP + TN) > 0 else 0
     FDR = TP / (TP + FN) if (TP + FN) > 0 else 0
-    DD = (TP + FN) / len(y_test_fault)  # 检测延迟简化为故障检测占比
+    DD = calculate_detection_delay(y_pred_fault_label)
 
-    results.append({'fault_type': fault_type, 'FAR': FAR, 'FDR': FDR, 'DD': DD})
+    cca_results.append({'fault_type': fault_type, 'FAR': FAR, 'FDR': FDR, 'DD': DD})
 
     print(f"{fault_type}: FAR: {FAR}, FDR: {FDR}, DD: {DD}\n")
 
-    if not(FDR>0.7 and FAR<0.5):
-        plt.figure(i, figsize=(15, 6))
-        plt.subplot(121)
-        plt.plot(y_pred_fault, label='CCA Predicted')
-        plt.title(f'CCA Prediction Scores for Fault Type {fault_type}')
-        plt.xlabel('Sample Index')
-        plt.ylabel('Predicted Score')
-        plt.legend()
-        plt.subplot(122)
-        plt.plot(y_pred_fault, label='X_c')
+    if (not i % 4) and i < 20:
+        fig_num = int(220 + i / 4)
+        # plt.figure(fig_num, figsize=(15, 6))
+        plt.subplot(fig_num)
+        plt.plot(X_c, label='CCA Predicted')
         plt.axhline(y=threshold, color='red', label='Threshold', linestyle='--')
+        plt.title(f'CCA Prediction Scores for Fault Type {fault_type}', fontsize=12)
+        # plt.xlabel('Sample Index')
+        # plt.ylabel('Predicted Score')
+        plt.legend()
+        # plt.plot(y_pred_fault, label='X_c')
+        plt.xticks(fontsize=12)
+        plt.yticks(fontsize=12)
+
+
+
+cca_svm_store_res('cca', cca_results, 0.4)
+
 plt.show()
 
 """

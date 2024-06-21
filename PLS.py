@@ -3,6 +3,10 @@ from scipy.io import loadmat
 from sklearn.cross_decomposition import PLSRegression
 from sklearn.preprocessing import StandardScaler
 import matplotlib.pyplot as plt
+from visualize import *
+
+
+pls_results = []
 
 # 加载数据
 data = loadmat('TE_data.mat')
@@ -48,20 +52,34 @@ for i in range(1, 22):
 
     FAR = FP / (FP + TN) if (FP + TN) > 0 else 0
     FDR = TP / (TP + FN) if (TP + FN) > 0 else 0
-    DD = (TP + FN) / len(y_test_fault)  # 检测延迟简化为故障检测占比
+    # DD = (TP + FN) / len(y_test_fault)  # 检测延迟简化为故障检测占比
+    DD = calculate_detection_delay(y_pred_fault_label)
 
-    results.append({'fault_type': fault_type, 'FAR': FAR, 'FDR': FDR, 'DD': DD})
+    pls_results.append({
+        'fault_type': fault_type,
+        'threshold': 0.4,
+        'FAR': FAR,
+        'FDR': FDR,
+        'DD': DD
+    })
 
     print(f"{fault_type}: FAR: {FAR}, FDR: {FDR}, DD: {DD}\n")
 
-    if not(FDR>0.7 and FAR<0.5):
-        plt.figure(i, figsize=(15, 6))
+    if (not i % 4) and i < 20:
+        # plt.figure(i, figsize=(15, 6))
+        fig_num = int(220 + i / 4)
+        plt.subplot(fig_num)
         plt.plot(y_pred_fault, label='PLS Predicted Scores')
         plt.axhline(y=0.4, color='red', label='Threshold', linestyle='--')
-        plt.title(f'PLS Prediction Scores for Fault Type {fault_type}')
-        plt.xlabel('Sample Index')
-        plt.ylabel('Predicted Score')
+        plt.title(f'PLS Prediction Scores for Fault Type {fault_type}', fontsize=12)
+        # plt.xlabel('Sample Index')
+        # plt.ylabel('Predicted Score')
+        plt.xticks(fontsize=12)
+        plt.yticks(fontsize=12)
         plt.legend()
+
+
+pca_pls_store_res('pls', pls_results, 10, 0.4)
 
 plt.show()
 
